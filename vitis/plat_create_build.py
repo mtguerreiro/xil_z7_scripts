@@ -70,7 +70,7 @@ client.set_workspace(f"{ws}/")
 plats = client.list_platform_components().platformComponent
 
 if plats == []:
-    logger.info('No platform found in {ws}. Creating platform {platform_name} with XSA {xsa_file}.')
+    logger.info(f"No platform found in {ws}. Creating platform {platform_name} with XSA {xsa_file}.")
     platform = client.create_platform_component(name=platform_name, hw_design=xsa_file)
 
     fsbl = platform.get_domain('zynq_fsbl')
@@ -85,7 +85,7 @@ if plats == []:
     platform.build()
     platform_xpfm = client.find_platform_in_repos(platform_name)
 
-    cpu0_app = client.create_app_component(name=cpu0_app_name, platform=platform_xpfm, domain=cpu0_name, template='freertos_hello_world')
+    cpu0_app = client.create_app_component(name=cpu0_app_name, platform=platform_xpfm, domain=cpu0_name, template='hello_world')
     if cpu1_app_name is not None:
         cpu1_app = client.create_app_component(name=cpu1_app_name, platform=platform_xpfm, domain=cpu1_name, template='hello_world')
     else:
