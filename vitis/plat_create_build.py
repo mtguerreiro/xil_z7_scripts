@@ -95,9 +95,12 @@ def process_os_params(domain, params):
         domain.set_config(option='os', param=p, value=v)
 
 def process_lib_params(domain, libs):
+    curr_libs = {l['name'] for l in domain.get_libs()}
     for lib in libs:
+        if lib not in curr_libs:
+            domain.set_lib(lib)
         for p, v in libs[lib].items():
-            domain.set_config(option=option, param=p, value=v, lib=lib)
+            domain.set_config(option='lib', param=p, value=v, lib_name=lib)
 
 
 # --- Workspace and projects ---
@@ -123,6 +126,13 @@ if plats == []:
     platform.add_domain(name=cpu0_name, cpu='ps7_cortexa9_0', os=cpu0.os)
     cpu0_domain = platform.get_domain(cpu0_name)
 
+    if cpu0.options:
+        if 'os' in cpu0.options:
+            process_os_params(cpu0_domain, cpu0.options['os'])
+
+        if 'lib' in cpu0.options:
+            process_lib_params(cpu0_domain, cpu0.options['lib'])
+            
 ##    if cpu1_app_name is not None:
 ##        platform.add_domain(name=cpu1_name, cpu='ps7_cortexa9_1', os='standalone')
 ##        cpu1_domain = platform.get_domain(cpu1_name)
@@ -159,12 +169,12 @@ else:
 ##        cpu1_app = None
 
 
-if cpu0.options:
-    if 'os' in cpu0.options:
-        process_os_params(cpu0_domain, cpu0.options['os'])
+    if cpu0.options:
+        if 'os' in cpu0.options:
+            process_os_params(cpu0_domain, cpu0.options['os'])
 
-    if 'lib' in cpu0.options:
-        process_lib_params(cpu0_domain, cpu0.options['libs'])
+        if 'lib' in cpu0.options:
+            process_lib_params(cpu0_domain, cpu0.options['lib'])
 
 
 # --- Build applications ---
