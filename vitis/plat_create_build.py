@@ -17,6 +17,7 @@ class AppData:
     os      : str = 'standalone'
     template: str = 'hello_world'
     cmake   : dict = field(default_factory=dict)
+    options : dict = field(default_factory=dict)
 
 # --- Logging config ---
 logger = logging.getLogger(__name__)
@@ -56,7 +57,8 @@ if json_cfg:
     if 'cpu0' in jdata:
         cpu0 = AppData(**jdata['cpu0'])
 
-# --- Processes the cmake options ---
+
+# --- Process cmake options ---
 def process_cpu_cmake(cpu, ws):
     if 'config' in cpu.cmake:
         pathlib.Path(f"{ws}/{cpu.name}/src/UserConfig.cmake").unlink()
@@ -85,6 +87,18 @@ def process_cpu_cmake(cpu, ws):
                 if end_section in line:
                     f.write(f"{add_text}\n")
                 f.write(line)
+
+
+# --- Process params ---
+def process_os_params(domain, params):
+    for p, v in params.items():
+        domain.set_config(option='os', param=p, value=v)
+
+def process_lib_params(domain, libs):
+    for lib in libs:
+        for p, v in libs[lib].items():
+            domain.set_config(option=option, param=p, value=v, lib=lib)
+
 
 # --- Workspace and projects ---
 cpu0_name = 'cpu0'
@@ -119,6 +133,7 @@ if plats == []:
     cpu0_app = client.create_app_component(name=cpu0.name, platform=platform_xpfm, domain=cpu0_name, template=cpu0.template)
     if cpu0.cmake:
         process_cpu_cmake(cpu0, ws)
+
 ##    if cpu1_app_name is not None:
 ##        cpu1_app = client.create_app_component(name=cpu1_app_name, platform=platform_xpfm, domain=cpu1_name, template='hello_world')
 ##    else:
@@ -136,12 +151,20 @@ else:
     platform = client.get_component(platform_name)
     platform.build()
 
+    cpu0_domain = platform.get_domain(cpu0_name)
     cpu0_app = client.get_component(cpu0.name)
 ##    if cpu1_app_name is not None:
 ##        cpu1_app = client.get_component(cpu1_app_name)
 ##    else:
 ##        cpu1_app = None
 
+
+if cpu0.options:
+    if 'os' in cpu0.options:
+        process_os_params(cpu0_domain, cpu0.options['os'])
+
+    if 'lib' in cpu0.options:
+        process_lib_params(cpu0_domain, cpu0.options['libs'])
 
 
 # --- Build applications ---
