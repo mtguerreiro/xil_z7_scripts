@@ -1,5 +1,4 @@
 import argparse
-
 import logging
 
 import vitis
@@ -9,9 +8,19 @@ import pathlib
 import shutil
 import zipfile
 
+import json
+from dataclasses import dataclass, field
+
+@dataclass
+class AppData:
+    name    : str = 'app'
+    os      : str = 'standalone'
+    template: str = 'hello_world'
+    cmake   : dict = field(default_factory=dict)
+
 # --- Logging config ---
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 if not logger.handlers:
     handler = logging.StreamHandler()
@@ -28,32 +37,54 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--xsa",
-    help="Platform (XSA) file (example: path/to/plat.xsa)"
-)
-
-parser.add_argument(
-    "--plat_name", default="platform",
-    help="Name of the new platform project (default: platform)"
-)
-
-parser.add_argument(
-    "--c0_name", default="cpu0_app",
-    help="Name of the new core 0 project (default: cpu0_app)"
-)
-
-parser.add_argument(
-    "--c1_name", default=None,
-    help="Name of the new core 1 project (default: None)"
+    "--config", default=None,
+    help="JSON config file (default: None)"
 )
 
 args = parser.parse_args()
-
-xsa_file = args.xsa
-platform_name = args.plat_name
-cpu0_app_name = args.c0_name
-cpu1_app_name = args.c1_name
 ws = args.ws
+json_cfg = args.config
+
+# --- Config file processing ---
+if json_cfg:
+    with open(json_cfg, mode='r') as f:
+        jdata = json.load(f)
+
+    xsa_file = jdata.get('xsa')
+    platform_name = jdata.get('plat_name')
+
+    if 'cpu0' in jdata:
+        cpu0 = AppData(**jdata['cpu0'])
+
+# --- Processes the cmake options ---
+def process_cpu_cmake(cpu, ws):
+    if 'config' in cpu.cmake:
+        pathlib.Path(f"{ws}/{cpu.name}/src/UserConfig.cmake").unlink()
+        f = shutil.copy(f"{cpu.cmake['config']}", f'{ws}/{cpu.name}/src')
+        pathlib.Path(f).rename(f"{ws}/{cpu.name}/src/UserConfig.cmake")
+
+    add_text = ""
+    if 'path_vars' in cpu0.cmake:
+        add_text += "\n"
+        for v, p in cpu0.cmake['path_vars'].items():
+            path = pathlib.Path(p)
+            p = p if path.is_absolute() is True else path.resolve()
+            add_text += f"set({v} \"{p}\")\n"
+
+    if 'include' in cpu0.cmake:
+        add_text += "\n"
+        add_text += f"include(\"{cpu.cmake['include']}\")\n"
+
+    if add_text != "":
+        with open(f"{ws}/{cpu.name}/src/UserConfig.cmake", "r") as f:
+            lines = f.readlines()
+
+        with open(f"{ws}/{cpu.name}/src/UserConfig.cmake", "w") as f:
+            end_section = "###   END OF USER SETTINGS SECTION ###"
+            for line in lines:
+                if end_section in line:
+                    f.write(f"{add_text}\n")
+                f.write(line)
 
 # --- Workspace and projects ---
 cpu0_name = 'cpu0'
@@ -62,11 +93,11 @@ cpu1_name = 'cpu1'
 # Create the workspace
 pathlib.Path(ws).mkdir(exist_ok=True)
 
-# Start the client and sets the worskapce
+# Start the client and set the worskapce
 client = vitis.create_client()
 client.set_workspace(f"{ws}/")
 
-# Checks if the there is any platform in the workspace
+# Check if the there is any platform in the workspace
 plats = client.list_platform_components().platformComponent
 
 if plats == []:
@@ -75,21 +106,23 @@ if plats == []:
 
     fsbl = platform.get_domain('zynq_fsbl')
 
-    platform.add_domain(name=cpu0_name, cpu='ps7_cortexa9_0', os='standalone')
-    cpu0 = platform.get_domain(cpu0_name)
+    platform.add_domain(name=cpu0_name, cpu='ps7_cortexa9_0', os=cpu0.os)
+    cpu0_domain = platform.get_domain(cpu0_name)
 
-    if cpu1_app_name is not None:
-        platform.add_domain(name=cpu1_name, cpu='ps7_cortexa9_1', os='standalone')
-        cpu1 = platform.get_domain(cpu1_name)
+##    if cpu1_app_name is not None:
+##        platform.add_domain(name=cpu1_name, cpu='ps7_cortexa9_1', os='standalone')
+##        cpu1_domain = platform.get_domain(cpu1_name)
     
     platform.build()
     platform_xpfm = client.find_platform_in_repos(platform_name)
 
-    cpu0_app = client.create_app_component(name=cpu0_app_name, platform=platform_xpfm, domain=cpu0_name, template='hello_world')
-    if cpu1_app_name is not None:
-        cpu1_app = client.create_app_component(name=cpu1_app_name, platform=platform_xpfm, domain=cpu1_name, template='hello_world')
-    else:
-        cpu1_app = None
+    cpu0_app = client.create_app_component(name=cpu0.name, platform=platform_xpfm, domain=cpu0_name, template=cpu0.template)
+    if cpu0.cmake:
+        process_cpu_cmake(cpu0, ws)
+##    if cpu1_app_name is not None:
+##        cpu1_app = client.create_app_component(name=cpu1_app_name, platform=platform_xpfm, domain=cpu1_name, template='hello_world')
+##    else:
+##        cpu1_app = None
 else:
     # Loads the existing platform
     platform_path = plats[0].platform_location
@@ -103,18 +136,20 @@ else:
     platform = client.get_component(platform_name)
     platform.build()
 
-    cpu0_app = client.get_component(cpu0_app_name)
-    if cpu1_app_name is not None:
-        cpu1_app = client.get_component(cpu1_app_name)
-    else:
-        cpu1_app = None
+    cpu0_app = client.get_component(cpu0.name)
+##    if cpu1_app_name is not None:
+##        cpu1_app = client.get_component(cpu1_app_name)
+##    else:
+##        cpu1_app = None
+
+
 
 # --- Build applications ---
 cpu0_app.clean()
 cpu0_app.build()
 
-if cpu1_app_name is not None:
-    cpu1_app.clean()
-    cpu1_app.build()
+##if cpu1_app_name is not None:
+##    cpu1_app.clean()
+##    cpu1_app.build()
 
 vitis.dispose()
