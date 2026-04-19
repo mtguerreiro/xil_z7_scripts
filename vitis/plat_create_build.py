@@ -12,6 +12,11 @@ import json
 from dataclasses import dataclass, field
 
 @dataclass
+class FsblData:
+    domain      : str = ''
+    options     : dict = field(default_factory=dict)
+
+@dataclass
 class AppData:
     processor   : str = ''
     domain_name : str = ''
@@ -53,6 +58,7 @@ json_cfg = args.config
 
 cpu0 = None
 cpu1 = None
+fsbl = None
 
 # --- Config file processing ---
 if json_cfg:
@@ -62,6 +68,9 @@ if json_cfg:
     xsa_file = jdata.get('xsa')
     platform_name = jdata.get('plat_name')
 
+    if 'fsbl' in jdata:
+        fsbl = FsblData(**jdata['fsbl'])
+        
     if 'cpu0' in jdata:
         cpu0 = AppData(**jdata['cpu0'])
         cpu0.domain_name = 'cpu0'
@@ -118,6 +127,13 @@ def process_lib_params(domain, libs):
         for p, v in libs[lib].items():
             domain.set_config(option='lib', param=p, value=v, lib_name=lib)
 
+def process_proc_params(domain, params):
+    if 'proc_extra_compiler_flags' in params:
+        proc_extra_comp_flags = domain.get_config('proc', 'proc_extra_compiler_flags')
+        value = proc_extra_comp_flags['value']
+        value = f"{value} {params['proc_extra_compiler_flags']}"
+        domain.set_config('proc', 'proc_extra_compiler_flags', value)
+
 # --- Workspace and projects ---
 cpu0_name = 'cpu0'
 cpu1_name = 'cpu1'
@@ -136,7 +152,10 @@ if plats == []:
     logger.info(f"No platform found in {ws}. Creating platform {platform_name} with XSA {xsa_file}.")
     platform = client.create_platform_component(name=platform_name, hw_design=xsa_file)
 
-    fsbl = platform.get_domain('zynq_fsbl')
+    fsbl.domain = platform.get_domain('zynq_fsbl')
+    if fsbl.options:
+        if 'proc' in fsbl.options:
+            process_proc_params(fsbl.domain, fsbl.options['proc'])
 
     for cpu in cpus:
         if cpu is None:
