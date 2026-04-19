@@ -58,7 +58,7 @@ json_cfg = args.config
 
 cpu0 = None
 cpu1 = None
-fsbl = None
+fsbl = FsblData()
 
 # --- Config file processing ---
 if json_cfg:
