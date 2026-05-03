@@ -1,15 +1,15 @@
 import argparse
 import logging
+import json
 
-import vitis
 import os
 import sys
 import pathlib
 import shutil
-import zipfile
 
-import json
 from dataclasses import dataclass, field
+
+import vitis
 
 @dataclass
 class FsblData:
@@ -56,11 +56,11 @@ args = parser.parse_args()
 ws = args.ws
 json_cfg = args.config
 
+# --- Config file processing ---
 cpu0 = None
 cpu1 = None
 fsbl = FsblData()
 
-# --- Config file processing ---
 if json_cfg:
     with open(json_cfg, mode='r') as f:
         jdata = json.load(f)
