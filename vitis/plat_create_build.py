@@ -127,7 +127,7 @@ def process_lib_params(domain, libs):
         for p, v in libs[lib].items():
             domain.set_config(option='lib', param=p, value=v, lib_name=lib)
 
-def process_proc_params(domain, params):
+def process_proc_params(domain, params):       
     if 'proc_extra_compiler_flags' in params:
         proc_extra_comp_flags = domain.get_config('proc', 'proc_extra_compiler_flags')
         value = proc_extra_comp_flags['value']
@@ -170,6 +170,9 @@ if plats == []:
 
             if 'lib' in cpu.options:
                 process_lib_params(cpu.domain, cpu.options['lib'])
+
+            if 'proc' in cpu.options:
+                process_proc_params(cpu.domain, cpu.options['proc'])
     
     platform.build()
     platform_xpfm = client.find_platform_in_repos(platform_name)
