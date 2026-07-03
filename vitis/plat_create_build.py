@@ -52,9 +52,15 @@ parser.add_argument(
     help="JSON config file (default: None)"
 )
 
+parser.add_argument(
+    "--dispose", default=True,
+    help="Shutdown Vitis server (default: True)"
+)
+
 args = parser.parse_args()
 ws = args.ws
 json_cfg = args.config
+dispose = args.dispose
 
 # --- Config file processing ---
 cpu0 = None
@@ -218,4 +224,5 @@ for cpu in cpus:
     cpu.app.clean()
     cpu.app.build()
 
-vitis.dispose()
+if dispose:
+    vitis.dispose()
