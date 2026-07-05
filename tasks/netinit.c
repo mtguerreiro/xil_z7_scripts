@@ -18,7 +18,9 @@
 
 /* lwip */
 #include "lwipopts.h"
+#if NETINIT_CONFIG_USE_DHCP==1
 #include "lwip/dhcp.h"
+#endif
 
 /* Logging config */
 #include "clogging/logging_levels.h"
@@ -62,8 +64,10 @@ static void netinitNetworkThread(void *param);
  */
 static void netinitPrintIPSettings(ip_addr_t *ip, ip_addr_t *mask, ip_addr_t *gw);
 
+#if NETINIT_CONFIG_USE_DHCP==1
 extern volatile int dhcp_timoutcntr;
 err_t dhcp_start(struct netif *netif);
+#endif
 void lwip_init();
 
 //=============================================================================
@@ -75,9 +79,6 @@ void lwip_init();
 void netinit(void *param){
 
     netinitParams_t *cfg = (netinitParams_t *)param;
-    struct netif *netif;
-
-    int mscnt = 0;
 
     /* initialize lwIP before calling sys_thread_new */
     lwip_init();
@@ -89,9 +90,11 @@ void netinit(void *param){
         NETINIT_CONFIG_THREAD_PRIO_DEFAULT
     );
 
+#if NETINIT_CONFIG_USE_DHCP==1
+    struct netif *netif;
     netif = &servernetif;
-
-    while (1) {
+    int mscnt = 0;
+    while (1){
 
         vTaskDelay(DHCP_FINE_TIMER_MSECS / portTICK_RATE_MS);
 
@@ -103,15 +106,15 @@ void netinit(void *param){
         mscnt += DHCP_FINE_TIMER_MSECS;
 
         if (mscnt >= DHCP_COARSE_TIMER_SECS * 2000) {
-            LogError(( "DHCP request timed out. Configuring default ip of 192.168.0.10" ));
-            IP4_ADDR(&(netif->ip_addr),  192, 168, 0, 10);
-            IP4_ADDR(&(netif->netmask), 255, 255, 255,  0);
-            IP4_ADDR(&(netif->gw),  192, 168, 0, 1);
+            LogError(( "DHCP request timed out. Using default network settings." ));
+            ip4addr_aton(NETINIT_CONFIG_DEFAULT_IP, &(netif->ip_addr));
+            ip4addr_aton(NETINIT_CONFIG_DEFAULT_NETMASK, &(netif->netmask));
+            ip4addr_aton(NETINIT_CONFIG_DEFAULT_GATEWAY, &(netif->gw));
             break;
         }
     }
-
     netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
+#endif
 
     if( cfg->onInit)
         cfg->onInit();
@@ -142,15 +145,19 @@ static void netinitNetworkThread(void *param){
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
     ));
 
-    int mscnt = 0;
-
     netif = &servernetif;
 
     LogInfo(( "Initializing network settings" ));
 
+#if NETINIT_CONFIG_USE_DHCP==1
     ipaddr.addr = 0;
     gw.addr = 0;
     netmask.addr = 0;
+#else
+    ip4addr_aton(NETINIT_CONFIG_DEFAULT_IP, &ipaddr);
+    ip4addr_aton(NETINIT_CONFIG_DEFAULT_NETMASK, &netmask);
+    ip4addr_aton(NETINIT_CONFIG_DEFAULT_GATEWAY, &gw);
+#endif
 
     /* Add network interface to the netif_list, and set it as default */
     if (!xemac_add(netif, &ipaddr, &netmask, &gw, mac, NETINIT_PLAT_EMAC_BASEADDR)) {
@@ -170,6 +177,8 @@ static void netinitNetworkThread(void *param){
         NETINIT_CONFIG_THREAD_PRIO_DEFAULT
     );
 
+#if NETINIT_CONFIG_USE_DHCP==1
+    int mscnt = 0;
     dhcp_start(netif);
     while (1) {
         vTaskDelay(DHCP_FINE_TIMER_MSECS / portTICK_RATE_MS);
@@ -180,6 +189,10 @@ static void netinitNetworkThread(void *param){
             mscnt = 0;
         }
     }
+#else
+    netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
+    vTaskDelete(NULL);
+#endif
 
     return;
 }
