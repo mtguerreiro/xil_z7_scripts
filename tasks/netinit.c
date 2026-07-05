@@ -85,7 +85,7 @@ void netinit(void *param){
 
     /* any thread using lwIP should be created using sys_thread_new */
     sys_thread_new(
-        "netinitNWThread", netinitNetworkThread, (void *)cfg->mac,
+        "netinitNWThread", netinitNetworkThread, param,
         NETINIT_CONFIG_THREAD_STACK_SIZE_DEFAULT,
         NETINIT_CONFIG_THREAD_PRIO_DEFAULT
     );
@@ -114,10 +114,10 @@ void netinit(void *param){
         }
     }
     netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
-#endif
 
     if( cfg->onInit)
         cfg->onInit();
+#endif
 
     vTaskDelete(NULL);
 }
@@ -130,7 +130,8 @@ void netinit(void *param){
 //-----------------------------------------------------------------------------
 static void netinitNetworkThread(void *param){
 
-    uint8_t *p = (uint8_t *)param;
+    netinitParams_t *cfg = (netinitParams_t *)param;
+    uint8_t *p = cfg->mac;
     ip_addr_t ipaddr, netmask, gw;
     struct netif *netif;
     uint8_t mac[6] = {0x02, 0x11, 0x13, 0x57, 0x3a, 0xf3};
@@ -191,6 +192,8 @@ static void netinitNetworkThread(void *param){
     }
 #else
     netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
+    if( cfg->onInit)
+        cfg->onInit();
     vTaskDelete(NULL);
 #endif
 
