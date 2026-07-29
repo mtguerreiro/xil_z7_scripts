@@ -57,12 +57,12 @@ struct netif servernetif;
 /**
  * @brief Initializes socket and updates DHCP timer.
  */
-static void netinitNetworkThread(void *param);
+static void netinit_nw_thread(void *param);
 
 /**
  * @brief Prints IP settings
  */
-static void netinitPrintIPSettings(ip_addr_t *ip, ip_addr_t *mask, ip_addr_t *gw);
+static void netinit_print_ip(ip_addr_t *ip, ip_addr_t *mask, ip_addr_t *gw);
 
 #if NETINIT_CONFIG_USE_DHCP==1
 extern volatile int dhcp_timoutcntr;
@@ -78,14 +78,14 @@ void lwip_init();
 //-----------------------------------------------------------------------------
 void netinit(void *param){
 
-    netinitParams_t *cfg = (netinitParams_t *)param;
+    netinit_params_t *cfg = (netinit_params_t *)param;
 
     /* initialize lwIP before calling sys_thread_new */
     lwip_init();
 
     /* any thread using lwIP should be created using sys_thread_new */
     sys_thread_new(
-        "netinitNWThread", netinitNetworkThread, param,
+        "netinitNWThread", netinit_nw_thread, param,
         NETINIT_CONFIG_THREAD_STACK_SIZE_DEFAULT,
         NETINIT_CONFIG_THREAD_PRIO_DEFAULT
     );
@@ -113,10 +113,10 @@ void netinit(void *param){
             break;
         }
     }
-    netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
+    netinit_print_ip(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
 
-    if( cfg->onInit)
-        cfg->onInit();
+    if( cfg->on_init)
+        cfg->on_init();
 #endif
 
     vTaskDelete(NULL);
@@ -128,9 +128,9 @@ void netinit(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void netinitNetworkThread(void *param){
+static void netinit_nw_thread(void *param){
 
-    netinitParams_t *cfg = (netinitParams_t *)param;
+    netinit_params_t *cfg = (netinit_params_t *)param;
     uint8_t *p = cfg->mac;
     ip_addr_t ipaddr, netmask, gw;
     struct netif *netif;
@@ -191,16 +191,16 @@ static void netinitNetworkThread(void *param){
         }
     }
 #else
-    netinitPrintIPSettings(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
-    if( cfg->onInit)
-        cfg->onInit();
+    netinit_print_ip(&(netif->ip_addr), &(netif->netmask), &(netif->gw));
+    if( cfg->on_init )
+        cfg->on_init();
     vTaskDelete(NULL);
 #endif
 
     return;
 }
 //-----------------------------------------------------------------------------
-static void netinitPrintIPSettings(ip_addr_t *ip, ip_addr_t *mask, ip_addr_t *gw){
+static void netinit_print_ip(ip_addr_t *ip, ip_addr_t *mask, ip_addr_t *gw){
 
     LogInfo(( "Board IP : %d.%d.%d.%d", ip4_addr1(ip), ip4_addr2(ip), ip4_addr3(ip), ip4_addr4(ip) ));
     LogInfo(( "Netmask  : %d.%d.%d.%d", ip4_addr1(mask), ip4_addr2(mask), ip4_addr3(mask), ip4_addr4(mask) ));
