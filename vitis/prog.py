@@ -1,6 +1,7 @@
 import argparse
 import json
 import time
+import pathlib
 from dataclasses import dataclass, field
 
 import xsdb
@@ -44,7 +45,11 @@ with open(json_cfg, mode='r') as f:
 data = ProgData()
 
 # Gets xsa filename without the extesion
-data.xsa = jdata.get('xsa')[:-4]
+xsa_path = jdata.get('xsa')
+xsa_fname = pathlib.Path(xsa_path).stem
+
+print(f'XSA filename: {xsa_fname}')
+data.xsa = xsa_fname
 data.platform = jdata.get('plat_name')
     
 if 'cpu0' in jdata:
@@ -91,6 +96,7 @@ if data.cpu1:
 if data.cpu0:
     s.targets(2)
     s.con()
+    time.sleep(0.5)
 
 if data.cpu1:
     s.targets(3)
