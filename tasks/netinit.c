@@ -131,7 +131,7 @@ void netinit(void *param){
 static void netinit_nw_thread(void *param){
 
     netinit_params_t *cfg = (netinit_params_t *)param;
-    uint8_t *p = cfg->mac;
+    const uint8_t *p = cfg->mac;
     ip_addr_t ipaddr, netmask, gw;
     struct netif *netif;
     uint8_t mac[6] = {0x02, 0x11, 0x13, 0x57, 0x3a, 0xf3};
