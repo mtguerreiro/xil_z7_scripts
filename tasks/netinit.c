@@ -26,11 +26,11 @@
 #include "clogging/logging_levels.h"
 
 #ifndef LIBRARY_LOG_NAME
-#define LIBRARY_LOG_NAME    "NET_INIT"
+#define LIBRARY_LOG_NAME    "net-init"
 #endif
 
 #ifndef LIBRARY_LOG_LEVEL
-#define LIBRARY_LOG_LEVEL    LOG_DEBUG
+#define LIBRARY_LOG_LEVEL    LOG_INFO
 #endif
 #include "clogging/logging_stack.h"
 //=============================================================================
