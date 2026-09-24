@@ -16,7 +16,7 @@
 #include "clogging/logging_levels.h"
 
 #ifndef LIBRARY_LOG_NAME
-#define LIBRARY_LOG_NAME    "TCP_CLIENT"
+#define LIBRARY_LOG_NAME    "tcp-client"
 #endif
 
 #ifndef LIBRARY_LOG_LEVEL
@@ -24,7 +24,6 @@
 #endif
 #include "clogging/logging_stack.h"
 //=============================================================================
-
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/

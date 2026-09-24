@@ -16,7 +16,7 @@
 #include "clogging/logging_levels.h"
 
 #ifndef LIBRARY_LOG_NAME
-#define LIBRARY_LOG_NAME    "TCP_ECHO"
+#define LIBRARY_LOG_NAME    "tcp-echo"
 #endif
 
 #ifndef LIBRARY_LOG_LEVEL
