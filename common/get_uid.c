@@ -11,22 +11,6 @@
 //=============================================================================
 
 //=============================================================================
-/*--------------------------------- Defines ---------------------------------*/
-//=============================================================================
-// #define QSPI_W25Q256JV_CMD_RD_SR3           0x15
-// #define QSPI_W25Q256JV_CMD_RD_UID           0x4B
-// #define QSPI_W25Q256JV_UID_SIZE_BYTES       8
-//
-// #define QSPI_W25Q256JV_SR3_ADS_MASK         0x01
-// #define QSPI_W25Q256JV_SR3_ADS_3B_MASK      0
-//
-// #define QSPI_W25Q256JV_UID_NDUMMY_ADS_3B    4
-// #define QSPI_W25Q256JV_UID_NDUMMY_ADS_4B    5
-//
-// #define QSPI_W25Q256JV_BUF_SIZE_BYTES       16
-//=============================================================================
-
-//=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 
@@ -41,8 +25,6 @@ int32_t get_uid(get_uid_config_t *cfg, uint8_t *buffer, uint32_t size){
     int32_t status;
     uint8_t buf[96] = {0};
     uint8_t n_dummys;
-    uint8_t uid_read_size;
-
     uint32_t uid_offset;
     uint32_t addr_mode;
     static XQspiPs qspi_instance;
@@ -54,9 +36,7 @@ int32_t get_uid(get_uid_config_t *cfg, uint8_t *buffer, uint32_t size){
     if( size < cfg->uid_size )
         return GET_UID_ERROR_BUF_SIZE;
 
-
     /* QSPI initialization */
-
     qspi_config = XQspiPs_LookupConfig(XPAR_XQSPIPS_0_BASEADDR);
     if( qspi_config == 0 )
         return GET_UID_ERROR_QSPI_LOOK_UP_CFG;
@@ -77,9 +57,8 @@ int32_t get_uid(get_uid_config_t *cfg, uint8_t *buffer, uint32_t size){
 
     XQspiPs_SetSlaveSelect(&qspi_instance);
 
-
     /* Determines address mode */
-
+    memset(buf, 0, sizeof(buf));
     buf[0] = cfg->addr_mode_rd_cmd;
     status = XQspiPs_PolledTransfer(&qspi_instance, buf, buf, 2);
     if (status != XST_SUCCESS)
@@ -87,22 +66,17 @@ int32_t get_uid(get_uid_config_t *cfg, uint8_t *buffer, uint32_t size){
 
     addr_mode = buf[1] & cfg->addr_mode_mask;
 
-    if( addr_mode == cfg->addr_mode_mask )
+    if( addr_mode == cfg->addr_mode_3b_value )
         n_dummys = cfg->uid_n_dummy_3b;
     else
         n_dummys = cfg->uid_n_dummy_4b;
 
-
-    /* Reads UID */
-
-    memset(buf, 0, sizeof(buf));
-    buf[0] = cfg->uid_rd_cmd;
-    uid_read_size = 1 + n_dummys + cfg->uid_size;
-
-    if( sizeof(buf) < uid_read_size )
+    if( sizeof(buf) < (1U + n_dummys + cfg->uid_size) )
         return GET_UID_ERROR_INT_BUF_SIZE;
 
-    status = XQspiPs_PolledTransfer(&qspi_instance, buf, buf, uid_read_size);
+    /* Reads UID */
+    buf[0] = cfg->uid_rd_cmd;
+    status = XQspiPs_PolledTransfer(&qspi_instance, buf, buf, sizeof(buf));
     if (status != XST_SUCCESS)
         return GET_UID_ERROR_QSPI_UID_READ;
 
